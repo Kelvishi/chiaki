@@ -1,5 +1,5 @@
 
-image: alpine/latest
+image: alpine/edge # on edge for https://gitlab.alpinelinux.org/alpine/aports/-/issues/13287
 
 sources:
   - https://git.sr.ht/~thestr4ng3r/chiaki
@@ -16,9 +16,8 @@ packages:
   - qt5-qtmultimedia-dev
   - ffmpeg-dev
   - sdl2-dev
-  - podman
+  - docker
   - fuse
-  - udev
   - argp-standalone
 
 artifacts:
@@ -26,17 +25,10 @@ artifacts:
   - Chiaki.AppImage
 
 tasks:
-  - setup_podman: |
-      sudo rc-service udev start
-      sudo rc-service cgroups start
-      sudo rc-service fuse start # Fuse for AppImages
-      echo build:100000:65536 | sudo tee /etc/subuid
-      echo build:100000:65536 | sudo tee /etc/subgid
-      # https://www.kernel.org/doc/Documentation/networking/tuntap.txt
-      # for slirp4netns
-      sudo mkdir -p /dev/net
-      sudo mknod /dev/net/tun c 10 200
-      sudo chmod 0666 /dev/net/tun
+  - start_docker: |
+      sudo service docker start
+      sudo chmod +s /usr/bin/docker # Yes, I know what I am doing
+      sudo service fuse start # Fuse for AppImages
   - local_build_and_test: |
       cd chiaki
       cmake -Bbuild -GNinja -DCHIAKI_ENABLE_CLI=ON -DCHIAKI_ENABLE_GUI=ON -DCHIAKI_CLI_ARGP_STANDALONE=ON
@@ -44,12 +36,12 @@ tasks:
       build/test/chiaki-unit
   - appimage: |
       cd chiaki
-      scripts/run-podman-build-appimage.sh
+      scripts/run-docker-build-appimage.sh
       cp appimage/Chiaki.AppImage ../Chiaki.AppImage
   - switch: |
       cd chiaki
-      scripts/switch/run-podman-build-chiaki.sh
+      scripts/switch/run-docker-build-chiaki.sh
       cp build_switch/switch/chiaki.nro ../chiaki.nro
   - bullseye: |
       cd chiaki
-      scripts/run-podman-build-bullseye.sh
+      scripts/run-docker-build-bullseye.sh

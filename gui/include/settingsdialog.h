@@ -21,6 +21,7 @@ class SettingsDialog : public QDialog
 		QCheckBox *log_verbose_check_box;
 		QComboBox *disconnect_action_combo_box;
 		QCheckBox *dualsense_check_box;
+		QCheckBox *dualsense_emulated_rumble_check_box;
 
 		QComboBox *resolution_combo_box;
 		QComboBox *fps_combo_box;
@@ -39,6 +40,7 @@ class SettingsDialog : public QDialog
 	private slots:
 		void LogVerboseChanged();
 		void DualSenseChanged();
+		void DualSenseEmulatedRumbleChanged();
 		void DisconnectActionSelected();
 
 		void ResolutionSelected();

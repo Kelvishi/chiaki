@@ -20,6 +20,7 @@
 #include <QLineEdit>
 #include <QtConcurrent>
 #include <QFutureWatcher>
+#include <QMediaDevices>
 
 #include <chiaki/config.h>
 #include <chiaki/ffmpegdecoder.h>
@@ -70,9 +71,15 @@ SettingsDialog::SettingsDialog(Settings *settings, QWidget *parent) : QDialog(pa
 	connect(log_verbose_check_box, &QCheckBox::stateChanged, this, &SettingsDialog::LogVerboseChanged);
 
 	dualsense_check_box = new QCheckBox(this);
-	general_layout->addRow(tr("Extended DualSense Support:\nEnable haptics and adaptive triggers\nfor attached DualSense controllers.\nThis is currently experimental."), dualsense_check_box);
+	general_layout->addRow(tr("DualSense Support:\nEnable haptics (only USB) and adaptive triggers (USB and Bluetooth) \nfor attached DualSense controllers.\nThis is currently experimental."), dualsense_check_box);
 	dualsense_check_box->setChecked(settings->GetDualSenseEnabled());
 	connect(dualsense_check_box, &QCheckBox::stateChanged, this, &SettingsDialog::DualSenseChanged);
+
+	dualsense_emulated_rumble_check_box = new QCheckBox(this);
+	general_layout->addRow(tr("Emulated Haptics:\nEnables haptics feedback emulation when the device's native haptic \nfunction is not available. \n(Bluetooth and USB devices)"), dualsense_emulated_rumble_check_box);
+	dualsense_emulated_rumble_check_box->setChecked(settings->GetDualSenseRumbleEmulatedEnabled());
+	connect(dualsense_emulated_rumble_check_box, &QCheckBox::stateChanged, this, &SettingsDialog::DualSenseEmulatedRumbleChanged);
+
 
 	auto log_directory_label = new QLineEdit(GetLogBaseDir(), this);
 	log_directory_label->setReadOnly(true);
@@ -110,15 +117,15 @@ SettingsDialog::SettingsDialog(Settings *settings, QWidget *parent) : QDialog(pa
 
 	// do this async because it's slow, assuming availableDevices() is thread-safe
 	auto audio_devices_future = QtConcurrent::run([]() {
-		return QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+		return QMediaDevices::audioOutputs();
 	});
-	auto audio_devices_future_watcher = new QFutureWatcher<QList<QAudioDeviceInfo>>(this);
-	connect(audio_devices_future_watcher, &QFutureWatcher<QList<QAudioDeviceInfo>>::finished, this, [this, audio_devices_future_watcher, settings]() {
+	auto audio_devices_future_watcher = new QFutureWatcher<QList<QAudioDevice>>(this);
+	connect(audio_devices_future_watcher, &QFutureWatcher<QList<QAudioDevice>>::finished, this, [this, audio_devices_future_watcher, settings]() {
 		auto available_devices = audio_devices_future_watcher->result();
 		while(audio_device_combo_box->count() > 1) // remove all but "Auto"
 			audio_device_combo_box->removeItem(1);
-		for(QAudioDeviceInfo di : available_devices)
-			audio_device_combo_box->addItem(di.deviceName(), di.deviceName());
+		for(QAudioDevice &di : available_devices)
+			audio_device_combo_box->addItem(di.description(), di.description());
 		int audio_out_device_index = audio_device_combo_box->findData(settings->GetAudioOutDevice());
 		audio_device_combo_box->setCurrentIndex(audio_out_device_index < 0 ? 0 : audio_out_device_index);
 	});
@@ -243,7 +250,7 @@ SettingsDialog::SettingsDialog(Settings *settings, QWidget *parent) : QDialog(pa
 	// Registered Consoles
 
 	auto registered_hosts_group_box = new QGroupBox(tr("Registered Consoles"));
-	left_layout->addWidget(registered_hosts_group_box);
+	right_layout->addWidget(registered_hosts_group_box);
 
 	auto registered_hosts_layout = new QHBoxLayout();
 	registered_hosts_group_box->setLayout(registered_hosts_layout);
@@ -330,6 +337,11 @@ void SettingsDialog::LogVerboseChanged()
 void SettingsDialog::DualSenseChanged()
 {
 	settings->SetDualSenseEnabled(dualsense_check_box->isChecked());
+}
+
+void SettingsDialog::DualSenseEmulatedRumbleChanged()
+{
+	settings->SetDualSenseRumbleEmulatedEnabled(dualsense_emulated_rumble_check_box->isChecked());
 }
 
 void SettingsDialog::FPSSelected()

@@ -2,9 +2,13 @@
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui Concurrent Multimedia OpenGL Svg)
-if(APPLE)
-	find_package(Qt5 REQUIRED COMPONENTS MacExtras)
+find_package(Qt6 COMPONENTS Core Widgets Gui Concurrent Multimedia OpenGL Svg OpenGLWidgets)
+
+#if(APPLE)
+#	find_package(Qt6 COMPONENTS MacExtras)
+#endif()
+if(CHIAKI_GUI_ENABLE_SDL_GAMECONTROLLER)
+	find_package(SDL2 MODULE REQUIRED)
 endif()
 
 if(WIN32)
@@ -66,13 +70,15 @@ if(CHIAKI_ENABLE_CLI)
 	target_link_libraries(chiaki chiaki-cli-lib)
 endif()
 
-target_link_libraries(chiaki Qt5::Core Qt5::Widgets Qt5::Gui Qt5::Concurrent Qt5::Multimedia Qt5::OpenGL Qt5::Svg)
+target_link_libraries(chiaki Qt::Core Qt::Widgets Qt::Gui Qt::Concurrent Qt::Multimedia Qt::OpenGL Qt::Svg Qt::OpenGLWidgets)
 target_link_libraries(chiaki SDL2::SDL2)
 if(APPLE)
-	target_link_libraries(chiaki Qt5::MacExtras)
-	target_compile_definitions(chiaki PRIVATE CHIAKI_GUI_ENABLE_QT_MACEXTRAS)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework CoreVideo")
+#	target_link_libraries(chiaki Qt::MacExtras)
+#	target_compile_definitions(chiaki PRIVATE CHIAKI_GUI_ENABLE_QT_MACEXTRAS)
 endif()
 if(CHIAKI_GUI_ENABLE_SDL_GAMECONTROLLER)
+	target_link_libraries(chiaki SDL2::SDL2)
 	target_compile_definitions(chiaki PRIVATE CHIAKI_GUI_ENABLE_SDL_GAMECONTROLLER)
 endif()
 if(CHIAKI_ENABLE_SETSU)
@@ -88,7 +94,7 @@ set_target_properties(chiaki PROPERTIES
 		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/MacOSXBundleInfo.plist.in"
 		MACOSX_BUNDLE_BUNDLE_NAME Chiaki
 		MACOSX_BUNDLE_BUNDLE_VERSION ${CHIAKI_VERSION}
-		MACOSX_BUNDLE_COPYRIGHT "thestr4ng3r (AGPLv3)"
+		MACOSX_BUNDLE_COPYRIGHT "jbg77 (AGPLv3)"
 		MACOSX_BUNDLE_GUI_IDENTIFIER "org.chiaki.chiaki"
 		MACOSX_BUNDLE_ICON_FILE chiaki.icns
 		RESOURCE "${RESOURCE_FILES}")

@@ -32,8 +32,8 @@ tri_option(CHIAKI_USE_SYSTEM_JERASURE "Use system-provided jerasure instead of s
 tri_option(CHIAKI_USE_SYSTEM_NANOPB "Use system-provided nanopb instead of submodule" AUTO)
 
 set(CHIAKI_VERSION_MAJOR 2)
-set(CHIAKI_VERSION_MINOR 2)
-set(CHIAKI_VERSION_PATCH 0)
+set(CHIAKI_VERSION_MINOR 1)
+set(CHIAKI_VERSION_PATCH 1)
 set(CHIAKI_VERSION ${CHIAKI_VERSION_MAJOR}.${CHIAKI_VERSION_MINOR}.${CHIAKI_VERSION_PATCH})
 
 set(CPACK_PACKAGE_NAME "chiaki")
@@ -91,16 +91,13 @@ endif()
 if(CHIAKI_LIB_ENABLE_MBEDTLS)
 	add_definitions(-DCHIAKI_LIB_ENABLE_MBEDTLS)
 	if(CHIAKI_LIB_MBEDTLS_EXTERNAL_PROJECT)
-		set(FETCHCONTENT_QUIET CACHE BOOL FALSE)
 		include(FetchContent)
-		set(ENABLE_TESTING CACHE INTERNAL OFF)
-		set(ENABLE_PROGRAMS CACHE INTERNAL OFF)
-		set(USE_SHARED_MBEDTLS_LIBRARY CACHE INTERNAL OFF)
+		set(ENABLE_TESTING OFF)
+		set(USE_SHARED_MBEDTLS_LIBRARY OFF)
 		FetchContent_Declare(
 			mbedtls
 			GIT_REPOSITORY https://github.com/Mbed-TLS/mbedtls.git
 			GIT_TAG 8b3f26a5ac38d4fdccbc5c5366229f3e01dafcc0 # v2.28.0
-			GIT_PROGRESS TRUE
 		)
 		FetchContent_MakeAvailable(mbedtls)
 	endif()
@@ -150,30 +147,21 @@ if(CHIAKI_ENABLE_CLI)
 	add_subdirectory(cli)
 endif()
 
-if(CHIAKI_ENABLE_GUI AND CHIAKI_GUI_ENABLE_SDL_GAMECONTROLLER)
-	find_package(SDL2 MODULE REQUIRED)
-endif()
-
 if(CHIAKI_ENABLE_SETSU)
-	if(CHIAKI_ENABLE_SETSU STREQUAL AUTO AND SDL2_FOUND AND (SDL2_VERSION_MINOR GREATER 0 OR SDL2_VERSION_PATCH GREATER_EQUAL 14))
-		message(STATUS "SDL version ${SDL2_VERSION} is >= 2.0.14, disabling Setsu")
-		set(CHIAKI_ENABLE_SETSU OFF)
+	find_package(Udev QUIET)
+	find_package(Evdev QUIET)
+	if(Udev_FOUND AND Evdev_FOUND)
+		set(CHIAKI_ENABLE_SETSU ON)
 	else()
-		find_package(Udev QUIET)
-		find_package(Evdev QUIET)
-		if(Udev_FOUND AND Evdev_FOUND)
-			set(CHIAKI_ENABLE_SETSU ON)
-		else()
-			if(NOT CHIAKI_ENABLE_SETSU STREQUAL AUTO)
-				message(FATAL_ERROR "
-	CHIAKI_ENABLE_SETSU is set to ON, but its dependencies (udev and evdev) could not be resolved.
-	Keep in mind that setsu is only supported on Linux!")
-			endif()
-			set(CHIAKI_ENABLE_SETSU OFF)
+		if(NOT CHIAKI_ENABLE_SETSU STREQUAL AUTO)
+			message(FATAL_ERROR "
+CHIAKI_ENABLE_SETSU is set to ON, but its dependencies (udev and evdev) could not be resolved.
+Keep in mind that setsu is only supported on Linux!")
 		endif()
-		if(CHIAKI_ENABLE_SETSU)
-			add_subdirectory(setsu)
-		endif()
+		set(CHIAKI_ENABLE_SETSU OFF)
+	endif()
+	if(CHIAKI_ENABLE_SETSU)
+		add_subdirectory(setsu)
 	endif()
 endif()
 
@@ -184,6 +172,7 @@ else()
 endif()
 
 if(CHIAKI_ENABLE_GUI)
+	#add_subdirectory(setsu)
 	add_subdirectory(gui)
 endif()
 

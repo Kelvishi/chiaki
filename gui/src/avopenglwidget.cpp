@@ -11,7 +11,7 @@
 #include <QThread>
 #include <QTimer>
 
-#define MOUSE_TIMEOUT_MS 1000
+//#define MOUSE_TIMEOUT_MS 1000
 
 //#define DEBUG_OPENGL
 
@@ -39,17 +39,25 @@ uniform sampler2D plane3; // V
 in vec2 uv_var;
 out vec4 out_color;
 
-void main()
-{
-	vec3 yuv = vec3(
-		(texture(plane1, uv_var).r - (16.0 / 255.0)) / ((235.0 - 16.0) / 255.0),
-		(texture(plane2, uv_var).r - (16.0 / 255.0)) / ((240.0 - 16.0) / 255.0) - 0.5,
-		(texture(plane3, uv_var).r - (16.0 / 255.0)) / ((240.0 - 16.0) / 255.0) - 0.5);
-	vec3 rgb = mat3(
-		1.0,		1.0,		1.0,
-		0.0,		-0.21482,	2.12798,
-		1.28033,	-0.38059,	0.0) * yuv;
-	out_color = vec4(rgb, 1.0);
+const float yScale = 255.0 / (235.0 - 16.0);
+const float uvScale = 255.0 / (240.0 - 16.0);
+
+void main() {
+    float y = texture2D(plane1, uv_var).r;
+    float u = texture2D(plane2, uv_var).r - 0.5;
+    float v = texture2D(plane3, uv_var).r - 0.5;
+
+    y = y - 16.0/255.0;
+
+    float r = y*yScale +                          v*uvScale*1.5748;
+    float g = y*yScale - u*uvScale*1.8556*0.101 - v*uvScale*1.5748*0.2973;
+    float b = y*yScale + u*uvScale*1.8556;
+
+    r = clamp(r, 0.0, 1.0);
+    g = clamp(g, 0.0, 1.0);
+    b = clamp(b, 0.0, 1.0);
+
+	out_color = vec4(r,g,b,1.0);
 }
 )glsl";
 
@@ -122,9 +130,9 @@ QSurfaceFormat AVOpenGLWidget::CreateSurfaceFormat()
 	return format;
 }
 
-AVOpenGLWidget::AVOpenGLWidget(StreamSession *session, QWidget *parent, TransformMode transform_mode)
+AVOpenGLWidget::AVOpenGLWidget(StreamSession *session, QWidget *parent, ResolutionMode resolution_mode)
 	: QOpenGLWidget(parent),
-	session(session), transform_mode(transform_mode)
+	session(session), resolution_mode(resolution_mode)
 {
 	enum AVPixelFormat pixel_format = chiaki_ffmpeg_decoder_get_pixel_format(session->GetFfmpegDecoder());
 	conversion_config = nullptr;
@@ -147,10 +155,12 @@ AVOpenGLWidget::AVOpenGLWidget(StreamSession *session, QWidget *parent, Transfor
 	frame_uploader_thread = nullptr;
 	frame_fg = 0;
 
+	/*
 	setMouseTracking(true);
 	mouse_timer = new QTimer(this);
 	connect(mouse_timer, &QTimer::timeout, this, &AVOpenGLWidget::HideMouse);
 	ResetMouseTimeout();
+	*/
 }
 
 AVOpenGLWidget::~AVOpenGLWidget()
@@ -166,6 +176,7 @@ AVOpenGLWidget::~AVOpenGLWidget()
 	delete frame_uploader_surface;
 }
 
+/*
 void AVOpenGLWidget::mouseMoveEvent(QMouseEvent *event)
 {
 	QOpenGLWidget::mouseMoveEvent(event);
@@ -174,13 +185,29 @@ void AVOpenGLWidget::mouseMoveEvent(QMouseEvent *event)
 
 void AVOpenGLWidget::ResetMouseTimeout()
 {
-	unsetCursor();
+	//unsetCursor();
 	mouse_timer->start(MOUSE_TIMEOUT_MS);
 }
-
+*/
 void AVOpenGLWidget::HideMouse()
 {
 	setCursor(Qt::BlankCursor);
+}
+
+void AVOpenGLWidget::ToggleZoom()
+{
+	if( resolution_mode == Zoom )
+		resolution_mode = Normal;
+	else
+		resolution_mode = Zoom;
+}
+
+void AVOpenGLWidget::ToggleStretch()
+{
+	if( resolution_mode == Stretch )
+		resolution_mode = Normal;
+	else
+		resolution_mode = Stretch;
 }
 
 void AVOpenGLWidget::SwapFrames()
@@ -381,10 +408,11 @@ void AVOpenGLWidget::paintGL()
 		vp_width = widget_width;
 		vp_height = widget_height;
 	}
-	else if(transform_mode == TransformMode::Fit)
+	// Optimized for normal most often, followed by zoom, followed by stretch
+	else if(resolution_mode == Normal)
 	{
 		float aspect = (float)frame->width / (float)frame->height;
-		if(widget_height && aspect < (float)widget_width / (float)widget_height)
+		if(aspect < (float)widget_width / (float)widget_height)
 		{
 			vp_height = widget_height;
 			vp_width = (GLsizei)(vp_height * aspect);
@@ -395,10 +423,10 @@ void AVOpenGLWidget::paintGL()
 			vp_height = (GLsizei)(vp_width / aspect);
 		}
 	}
-	else if(transform_mode == TransformMode::Zoom)
+	else if(resolution_mode == Zoom)
 	{
 		float aspect = (float)frame->width / (float)frame->height;
-		if(widget_height && aspect < (float)widget_width / (float)widget_height)
+		if(aspect < (float)widget_width / (float)widget_height)
 		{
 			vp_width = widget_width;
 			vp_height = (GLsizei)(vp_width / aspect);
@@ -409,10 +437,11 @@ void AVOpenGLWidget::paintGL()
 			vp_width = (GLsizei)(vp_height * aspect);
 		}
 	}
-	else // transform_mode == TransformMode::Stretch
+	// Stretch if not Normal or Zoom (least likely so least optimized)
+	else
 	{
 		float aspect = (float)frame->width / (float)frame->height;
-		if(widget_height && aspect < (float)widget_width / (float)widget_height)
+		if(aspect < (float)widget_width / (float)widget_height)
 		{
 			vp_height = widget_height;
 			vp_width = widget_width;

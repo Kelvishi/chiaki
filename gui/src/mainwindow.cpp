@@ -82,7 +82,7 @@ MainWindow::MainWindow(Settings *settings, QWidget *parent)
 	auto layout = new QVBoxLayout();
 	main_widget->setLayout(layout);
 	setCentralWidget(main_widget);
-	layout->setMargin(0);
+	//layout->setMargin(0);
 
 	auto LoadIcon = [this](const QString &filename) {
 		return QIcon(new IconEngine(filename));
@@ -145,11 +145,6 @@ MainWindow::MainWindow(Settings *settings, QWidget *parent)
 	settings_action->setIcon(LoadIcon(":/icons/settings-20px.svg"));
 	AddToolBarAction(settings_action);
 	connect(settings_action, &QAction::triggered, this, &MainWindow::ShowSettings);
-
-	auto quit_action = new QAction(tr("Quit"), this);
-	quit_action->setShortcut(Qt::CTRL + Qt::Key_Q);
-	addAction(quit_action);
-	connect(quit_action, &QAction::triggered, this, &MainWindow::Quit);
 
 	auto scroll_area = new QScrollArea(this);
 	scroll_area->setWidgetResizable(true);
@@ -254,14 +249,7 @@ void MainWindow::ServerItemWidgetTriggered()
 		}
 
 		QString host = server.GetHostAddr();
-		StreamSessionConnectInfo info(
-				settings,
-				server.registered_host.GetTarget(),
-				host,
-				server.registered_host.GetRPRegistKey(),
-				server.registered_host.GetRPKey(),
-				false,
-				TransformMode::Fit);
+		StreamSessionConnectInfo info(settings, server.registered_host.GetTarget(), host, server.registered_host.GetRPRegistKey(), server.registered_host.GetRPKey(), false, settings->GetDualSenseEnabled(),  settings->GetDualSenseRumbleEmulatedEnabled());
 		new StreamWindow(info);
 	}
 	else
@@ -308,11 +296,6 @@ void MainWindow::ShowSettings()
 {
 	SettingsDialog dialog(settings, this);
 	dialog.exec();
-}
-
-void MainWindow::Quit()
-{
-	qApp->exit();
 }
 
 void MainWindow::UpdateDisplayServers()

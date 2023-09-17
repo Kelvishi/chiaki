@@ -7,7 +7,7 @@ sources:
 packages:
   - cmake
   - protobuf
-  - py39-protobuf
+  - py38-protobuf
   - opus
   - qt5-core
   - qt5-qmake

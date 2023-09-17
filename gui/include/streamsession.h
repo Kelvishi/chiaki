@@ -20,7 +20,6 @@
 #include "sessionlog.h"
 #include "controllermanager.h"
 #include "settings.h"
-#include "transformmode.h"
 
 #include <QObject>
 #include <QImage>
@@ -28,6 +27,7 @@
 #include <QTimer>
 
 class QAudioOutput;
+class QAudioDevice;
 class QIODevice;
 class QKeyEvent;
 class Settings;
@@ -54,18 +54,11 @@ struct StreamSessionConnectInfo
 	ChiakiConnectVideoProfile video_profile;
 	unsigned int audio_buffer_size;
 	bool fullscreen;
-	TransformMode transform_mode;
 	bool enable_keyboard;
 	bool enable_dualsense;
+	bool enable_emulated_rumble;
 
-	StreamSessionConnectInfo(
-			Settings *settings,
-			ChiakiTarget target,
-			QString host,
-			QByteArray regist_key,
-			QByteArray morning,
-			bool fullscreen,
-			TransformMode transform_mode);
+	StreamSessionConnectInfo(Settings *settings, ChiakiTarget target, QString host, QByteArray regist_key, QByteArray morning, bool fullscreen, bool enable_dualsense, bool enable_emulated_rumble);
 };
 
 class StreamSession : public QObject
@@ -79,6 +72,8 @@ class StreamSession : public QObject
 		ChiakiSession session;
 		ChiakiOpusDecoder opus_decoder;
 		bool connected;
+
+		
 
 		QHash<int, Controller *> controllers;
 #if CHIAKI_GUI_ENABLE_SETSU
@@ -98,11 +93,14 @@ class StreamSession : public QObject
 		ChiakiPiDecoder *pi_decoder;
 #endif
 
-		QAudioDeviceInfo audio_out_device_info;
+		QAudioDevice audio_out_device_info;
 		unsigned int audio_buffer_size;
 		QAudioOutput *audio_output;
 		QIODevice *audio_io;
 		SDL_AudioDeviceID haptics_output;
+
+		bool enable_emulated_rumble = false;
+
 		uint8_t *haptics_resampler_buf;
 
 		QMap<Qt::Key, int> key_map;
@@ -118,13 +116,15 @@ class StreamSession : public QObject
 		void InitHaptics();
 		void Event(ChiakiEvent *event);
 		void DisconnectHaptics();
-		void ConnectHaptics();
+ 		void ConnectHaptics();
 
 	public:
 		explicit StreamSession(const StreamSessionConnectInfo &connect_info, QObject *parent = nullptr);
 		~StreamSession();
 
 		bool IsConnected()	{ return connected; }
+
+		bool IsEmulatedRumble() {return enable_emulated_rumble;}
 
 		void Start();
 		void Stop();
@@ -140,7 +140,7 @@ class StreamSession : public QObject
 #endif
 
 		void HandleKeyboardEvent(QKeyEvent *event);
-		bool HandleMouseEvent(QMouseEvent *event);
+		void HandleMouseEvent(QMouseEvent *event);
 
 	signals:
 		void FfmpegFrameAvailable();

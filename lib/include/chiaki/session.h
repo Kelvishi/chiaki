@@ -79,6 +79,7 @@ typedef struct chiaki_connect_info_t
 	bool video_profile_auto_downgrade; // Downgrade video_profile if server does not seem to support it.
 	bool enable_keyboard;
 	bool enable_dualsense;
+	bool enable_emulated_rumble;
 } ChiakiConnectInfo;
 
 
@@ -94,16 +95,10 @@ typedef enum {
 	CHIAKI_QUIT_REASON_CTRL_CONNECT_FAILED,
 	CHIAKI_QUIT_REASON_CTRL_CONNECTION_REFUSED,
 	CHIAKI_QUIT_REASON_STREAM_CONNECTION_UNKNOWN,
-	CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_DISCONNECTED,
-	CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_SHUTDOWN, // like REMOTE_DISCONNECTED, but because the server shut down
+	CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_DISCONNECTED
 } ChiakiQuitReason;
 
 CHIAKI_EXPORT const char *chiaki_quit_reason_string(ChiakiQuitReason reason);
-
-static inline bool chiaki_quit_reason_is_error(ChiakiQuitReason reason)
-{
-	return reason != CHIAKI_QUIT_REASON_STOPPED && reason != CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_SHUTDOWN;
-}
 
 typedef struct chiaki_quit_event_t
 {
@@ -130,10 +125,10 @@ typedef struct chiaki_rumble_event_t
 
 typedef struct chiaki_trigger_effects_event_t
 {
-	uint8_t type_left;
-	uint8_t type_right;
-	uint8_t left[10];
-	uint8_t right[10];
+	int8_t type_left;
+	int8_t type_right;
+	int8_t left[10];
+	int8_t right[10];
 } ChiakiTriggerEffectsEvent;
 
 typedef enum {
@@ -266,9 +261,9 @@ static inline void chiaki_session_set_audio_sink(ChiakiSession *session, ChiakiA
 }
 
 /**
- * @param sink contents are copied
- */
-static inline void chiaki_session_set_haptics_sink(ChiakiSession *session, ChiakiAudioSink *sink)
+* @param sink contents are copied
+*/
+static inline void chiaki_session_set_haptics_sink(ChiakiSession * session, ChiakiAudioSink * sink)
 {
 	session->haptics_sink = *sink;
 }
